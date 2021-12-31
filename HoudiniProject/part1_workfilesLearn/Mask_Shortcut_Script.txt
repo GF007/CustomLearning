@@ -1,0 +1,50 @@
+import toolutils
+import soptoolutils
+import furtoolutils
+import soputils
+from importlib import reload
+
+def get_cached_group_string(node):
+    ref_node = node.node('POST_APPLY_EACH_STROKE')
+    geo = ref_node.geometry()
+    grp = geo.findPrimGroup('__input__')
+    grp_parm = node.parm('group')
+    if grp is None or len(grp.prims()) == 0 or len(grp.prims()) == len(geo.prims()):
+        return ''
+    else:
+        prim_nums = [p.number() for p in grp.prims()]
+        return " ".join(str(num) for num in prim_nums)
+
+
+def selection_change_callback(kwargs):
+    node = hou.selectedNodes()[0]
+    kwargs['node'] = node
+    kwargs['node'].parm('stroke_changedsel').set(True)
+        
+        
+def change_mask_callback(kwargs):
+    node = hou.selectedNodes()[0]
+    kwargs['node'] = node
+    kwargs['parmtuple'] = kwargs['node'].parmTuple('group')
+    change_mask(kwargs)       
+
+    
+def change_mask(kwargs):
+    reload(soputils)
+    
+    node = hou.selectedNodes()[0]
+    kwargs['node'] = node
+    kwargs['geometrytype'] = hou.geometryType.Primitives
+    kwargs['noderefparm'] = kwargs['node'].parm('selectionnode')
+    kwargs['node'].parm('highlightsel').set(False)
+    if not kwargs['node'].parm('stroke_changedsel').eval():
+        kwargs['node'].parm('group').set(get_cached_group_string(kwargs['node']))
+    soputils.selectGroupParm(kwargs)
+    kwargs['node'].parm('highlightsel').set(True)
+    parm = kwargs['node'].parm('group')
+    parm.pressButton()
+    kwargs['node'].setCurrent(True, True)
+
+    
+change_mask_callback(kwargs)    
+selection_change_callback(kwargs)
